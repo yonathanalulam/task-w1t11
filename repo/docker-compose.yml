@@ -16,7 +16,7 @@ services:
       context: .
       dockerfile: infra/mysql/Dockerfile
     volumes:
-      - ./:/workspace:ro
+      - ./:/workspace
       - runtime_state:/workspace/runtime
       - db_data:/var/lib/mysql
     healthcheck:
