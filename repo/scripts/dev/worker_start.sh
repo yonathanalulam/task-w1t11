@@ -2,11 +2,7 @@
 set -euo pipefail
 
 /workspace/scripts/dev/bootstrap_runtime.sh
-
-if [[ ! -f /workspace/backend/vendor/autoload.php ]]; then
-  mkdir -p /workspace/backend/vendor
-  cp -R /opt/backend-seed/vendor/. /workspace/backend/vendor/
-fi
+bash /workspace/scripts/dev/ensure_backend_vendor.sh
 
 set -a
 source /workspace/runtime/dev/runtime.env
