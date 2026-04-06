@@ -1,0 +1,16 @@
+{
+  "run_id": "0fc7c803-8fb8-4bcc-8847-113786657a32",
+  "current_phase": null,
+  "awaiting_human": false,
+  "clarification_approved": false,
+  "clarification_validator_session_id": null,
+  "evaluation_prompt_kind": null,
+  "evaluation_session_id": null,
+  "self_test_run_path": null,
+  "self_test_fixes_path": null,
+  "developer_sessions": [],
+  "active_developer_session_id": null,
+  "next_develop_session_number": 1,
+  "packaging_completed": false,
+  "claude_trace_root": ".ai/claude-traces"
+}
