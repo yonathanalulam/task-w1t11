@@ -188,8 +188,7 @@ final class SchedulingService
     public function releaseHold(int $holdId, string $username, bool $adminOverride): void
     {
         $this->inTransaction(function () use ($holdId, $username, $adminOverride): void {
-            $hold = $this->lockHold($holdId);
-            $slot = $this->lockSlot($hold->getSlot()->getId() ?? 0);
+            [$slot, $hold] = $this->lockSlotAndHold($holdId);
             $now = $this->nowUtc();
             $this->holds->expireActiveForSlot($slot, $now);
 
@@ -209,8 +208,7 @@ final class SchedulingService
     public function bookFromHold(int $holdId, string $username): AppointmentBooking
     {
         return $this->inTransaction(function () use ($holdId, $username): AppointmentBooking {
-            $hold = $this->lockHold($holdId);
-            $slot = $this->lockSlot($hold->getSlot()->getId() ?? 0);
+            [$slot, $hold] = $this->lockSlotAndHold($holdId);
             $now = $this->nowUtc();
             $this->assertSlotBookable($slot, $now);
             $this->holds->expireActiveForSlot($slot, $now);
@@ -432,6 +430,24 @@ final class SchedulingService
         }
 
         return $booking;
+    }
+
+    /** @return array{0: AppointmentSlot, 1: AppointmentHold} */
+    private function lockSlotAndHold(int $holdId): array
+    {
+        if ($holdId <= 0) {
+            throw new SchedulingFlowException('NOT_FOUND', Response::HTTP_NOT_FOUND, 'Appointment hold not found.');
+        }
+
+        $preloadedHold = $this->holds->find($holdId);
+        if (!$preloadedHold instanceof AppointmentHold) {
+            throw new SchedulingFlowException('NOT_FOUND', Response::HTTP_NOT_FOUND, 'Appointment hold not found.');
+        }
+
+        $slot = $this->lockSlot($preloadedHold->getSlot()->getId() ?? 0);
+        $hold = $this->lockHold($holdId);
+
+        return [$slot, $hold];
     }
 
     private function assertSlotBookable(AppointmentSlot $slot, \DateTimeImmutable $now): void

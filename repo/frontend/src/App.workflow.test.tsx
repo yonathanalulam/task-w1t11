@@ -386,6 +386,7 @@ describe('Practitioner and reviewer workflow UI', () => {
     let generated = false;
     let hasHold = false;
     let hasBooking = false;
+    let lastSavedWeeklyAvailability: Array<{ weekday: number; startTime: string; endTime: string }> = [];
 
     const fetchMock = globalThis.fetch as unknown as Mock;
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -438,6 +439,9 @@ describe('Practitioner and reviewer workflow UI', () => {
       }
 
       if (path === '/api/scheduling/configuration' && method === 'PUT') {
+        const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
+        lastSavedWeeklyAvailability = Array.isArray(body.weeklyAvailability) ? body.weeklyAvailability : [];
+
         return jsonResponse({
           data: {
             configuration: {
@@ -446,7 +450,7 @@ describe('Practitioner and reviewer workflow UI', () => {
               locationName: 'HQ-01',
               slotDurationMinutes: 30,
               slotCapacity: 1,
-              weeklyAvailability: [{ weekday: 1, startTime: '09:00', endTime: '17:00' }],
+              weeklyAvailability: lastSavedWeeklyAvailability,
               updatedAtUtc: new Date().toISOString(),
             },
           },
@@ -534,9 +538,16 @@ describe('Practitioner and reviewer workflow UI', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
     await screen.findByRole('heading', { name: 'Availability & slot management' });
+    await user.click(screen.getByLabelText('Wednesday'));
     await user.click(screen.getByRole('button', { name: 'Save weekly availability' }));
     await screen.findByText(/Scheduling configuration saved/i);
     await screen.findByText(/Active config: Ariya Chen @ HQ-01/i);
+    await waitFor(() => {
+      expect(lastSavedWeeklyAvailability).toEqual([
+        { weekday: 1, startTime: '09:00', endTime: '17:00' },
+        { weekday: 3, startTime: '09:00', endTime: '17:00' },
+      ]);
+    });
 
     await user.clear(screen.getByLabelText('Generate slots days ahead'));
     await user.type(screen.getByLabelText('Generate slots days ahead'), '7');
