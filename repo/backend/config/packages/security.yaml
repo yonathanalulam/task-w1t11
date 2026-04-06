@@ -1,0 +1,37 @@
+security:
+    session_fixation_strategy: none
+
+    password_hashers:
+        App\Entity\User:
+            algorithm: bcrypt
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: username
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        main:
+            lazy: true
+            provider: app_user_provider
+            stateless: false
+            custom_authenticators:
+                - App\Security\ApiSessionAuthenticator
+
+    access_control:
+        # Public API surface is intentionally small and explicit.
+        # Every other /api route is authenticated-by-default.
+        - { path: ^/api/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/(login|register|captcha|csrf-token), roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+
+when@test:
+    security:
+        password_hashers:
+            App\Entity\User:
+                algorithm: bcrypt
+                cost: 4

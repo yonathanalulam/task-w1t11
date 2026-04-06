@@ -1,0 +1,8 @@
+runtime/
+backend/vendor/
+backend/var/
+frontend/node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+.git/
