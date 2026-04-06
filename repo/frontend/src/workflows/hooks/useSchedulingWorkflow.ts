@@ -9,6 +9,18 @@ import type {
   SchedulingSlotsEnvelope,
 } from '../types';
 
+type WeeklyAvailabilityWindow = {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+};
+
+const DEFAULT_WEEKLY_AVAILABILITY: WeeklyAvailabilityWindow[] = [1, 2, 3, 4, 5].map((weekday) => ({
+  weekday,
+  startTime: '09:00',
+  endTime: '17:00',
+}));
+
 type UseSchedulingWorkflowParams = {
   csrfToken: string;
   sessionActive: boolean;
@@ -27,6 +39,7 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
   const [configLocationName, setConfigLocationName] = useState('HQ-01');
   const [configSlotDurationMinutes, setConfigSlotDurationMinutes] = useState(30);
   const [configSlotCapacity, setConfigSlotCapacity] = useState(1);
+  const [configWeeklyAvailability, setConfigWeeklyAvailability] = useState<WeeklyAvailabilityWindow[]>(DEFAULT_WEEKLY_AVAILABILITY);
   const [generateDaysAhead, setGenerateDaysAhead] = useState(14);
   const [rescheduleTargets, setRescheduleTargets] = useState<Record<number, number>>({});
 
@@ -44,6 +57,7 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
     setConfigLocationName('HQ-01');
     setConfigSlotDurationMinutes(30);
     setConfigSlotCapacity(1);
+    setConfigWeeklyAvailability(DEFAULT_WEEKLY_AVAILABILITY);
     setGenerateDaysAhead(14);
     setRescheduleTargets({});
   }, [sessionActive]);
@@ -101,12 +115,48 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
     setConfigLocationName(configuration.locationName);
     setConfigSlotDurationMinutes(configuration.slotDurationMinutes);
     setConfigSlotCapacity(configuration.slotCapacity);
+    setConfigWeeklyAvailability(
+      [...configuration.weeklyAvailability]
+        .sort((left, right) => left.weekday - right.weekday)
+        .map((entry) => ({
+          weekday: entry.weekday,
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+        })),
+    );
+  }
+
+  function toggleWeeklyAvailabilityDay(weekday: number, enabled: boolean) {
+    setConfigWeeklyAvailability((previous) => {
+      const existing = previous.find((entry) => entry.weekday === weekday);
+
+      if (!enabled) {
+        return previous.filter((entry) => entry.weekday !== weekday);
+      }
+
+      if (existing) {
+        return previous;
+      }
+
+      return [...previous, { weekday, startTime: '09:00', endTime: '17:00' }].sort((left, right) => left.weekday - right.weekday);
+    });
+  }
+
+  function setWeeklyAvailabilityTime(weekday: number, field: 'startTime' | 'endTime', value: string) {
+    setConfigWeeklyAvailability((previous) =>
+      previous.map((entry) => (entry.weekday === weekday ? { ...entry, [field]: value } : entry)),
+    );
   }
 
   async function handleSaveSchedulingConfig(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSchedulingError('');
     setSchedulingStatus('');
+
+    if (configWeeklyAvailability.length === 0) {
+      setSchedulingError('Select at least one weekday in weekly availability.');
+      return;
+    }
 
     try {
       const response = await apiPut<SchedulingConfigurationEnvelope>(
@@ -116,7 +166,7 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
           locationName: configLocationName.trim(),
           slotDurationMinutes: configSlotDurationMinutes,
           slotCapacity: configSlotCapacity,
-          weeklyAvailability: [1, 2, 3, 4, 5].map((weekday) => ({ weekday, startTime: '09:00', endTime: '17:00' })),
+          weeklyAvailability: configWeeklyAvailability,
         },
         csrfToken,
       );
@@ -233,6 +283,9 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
     setConfigSlotDurationMinutes,
     configSlotCapacity,
     setConfigSlotCapacity,
+    configWeeklyAvailability,
+    toggleWeeklyAvailabilityDay,
+    setWeeklyAvailabilityTime,
     generateDaysAhead,
     setGenerateDaysAhead,
     rescheduleTargets,

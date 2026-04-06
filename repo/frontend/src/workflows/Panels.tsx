@@ -940,6 +940,18 @@ export function AnalyticsWorkflowPanel({ model }: PanelProps) {
 }
 
 export function SchedulingWorkflowPanel({ model }: PanelProps) {
+  const weekdayLabels = [
+    { weekday: 1, label: 'Monday' },
+    { weekday: 2, label: 'Tuesday' },
+    { weekday: 3, label: 'Wednesday' },
+    { weekday: 4, label: 'Thursday' },
+    { weekday: 5, label: 'Friday' },
+    { weekday: 6, label: 'Saturday' },
+    { weekday: 7, label: 'Sunday' },
+  ];
+  const availabilityByWeekday: Map<number, { weekday: number; startTime: string; endTime: string }> = new Map(
+    (model.configWeeklyAvailability ?? []).map((entry: any) => [entry.weekday, entry]),
+  );
   const sortedSlots = [...model.schedulingSlots].sort(
     (a, b) => new Date(a.startAtUtc).getTime() - new Date(b.startAtUtc).getTime(),
   );
@@ -996,7 +1008,50 @@ export function SchedulingWorkflowPanel({ model }: PanelProps) {
                   onChange={(event) => model.setConfigSlotCapacity(Number(event.target.value))}
                 />
               </label>
-              <p className="muted">Weekly availability template: Monday-Friday, 09:00-17:00 UTC.</p>
+              <div className="meta-card">
+                <h3>Weekly availability (UTC)</h3>
+                <div className="form-stack">
+                  {weekdayLabels.map((day) => {
+                    const availability = availabilityByWeekday.get(day.weekday);
+                    const isEnabled = Boolean(availability);
+
+                    return (
+                      <div key={day.weekday} className="submission-card">
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            onChange={(event) => model.toggleWeeklyAvailabilityDay(day.weekday, event.target.checked)}
+                          />{' '}
+                          {day.label}
+                        </label>
+                        <div className="button-row">
+                          <label>
+                            Start
+                            <input
+                              type="time"
+                              step={300}
+                              value={availability?.startTime ?? '09:00'}
+                              disabled={!isEnabled}
+                              onChange={(event) => model.setWeeklyAvailabilityTime(day.weekday, 'startTime', event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            End
+                            <input
+                              type="time"
+                              step={300}
+                              value={availability?.endTime ?? '17:00'}
+                              disabled={!isEnabled}
+                              onChange={(event) => model.setWeeklyAvailabilityTime(day.weekday, 'endTime', event.target.value)}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
               <button type="submit">Save weekly availability</button>
             </form>
 
