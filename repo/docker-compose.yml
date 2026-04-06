@@ -35,7 +35,6 @@ services:
         condition: service_healthy
     working_dir: /workspace/backend
     volumes:
-      - ./:/workspace
       - runtime_state:/workspace/runtime
       - runtime_secrets:/run/secrets/field-encryption
     command: ["bash", "-lc", "/workspace/scripts/dev/api_start.sh"]
@@ -61,7 +60,6 @@ services:
         condition: service_healthy
     working_dir: /workspace/backend
     volumes:
-      - ./:/workspace
       - runtime_state:/workspace/runtime
       - runtime_secrets:/run/secrets/field-encryption
     command: ["bash", "-lc", "/workspace/scripts/dev/worker_start.sh"]

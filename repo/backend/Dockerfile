@@ -16,4 +16,10 @@ WORKDIR /opt/backend-seed
 COPY backend/composer.json backend/composer.lock ./
 RUN composer install --no-interaction --prefer-dist --no-scripts
 
+WORKDIR /workspace
+COPY backend /workspace/backend
+COPY scripts /workspace/scripts
+COPY init_db.sh /workspace/init_db.sh
+RUN chmod +x /workspace/init_db.sh /workspace/scripts/dev/*.sh
+
 WORKDIR /workspace/backend
