@@ -438,7 +438,19 @@ describe('Practitioner and reviewer workflow UI', () => {
       }
 
       if (path === '/api/scheduling/configuration' && method === 'PUT') {
-        return jsonResponse({ data: { configuration: { id: 1 } } });
+        return jsonResponse({
+          data: {
+            configuration: {
+              id: 1,
+              practitionerName: 'Ariya Chen',
+              locationName: 'HQ-01',
+              slotDurationMinutes: 30,
+              slotCapacity: 1,
+              weeklyAvailability: [{ weekday: 1, startTime: '09:00', endTime: '17:00' }],
+              updatedAtUtc: new Date().toISOString(),
+            },
+          },
+        });
       }
 
       if (path === '/api/scheduling/slots/generate' && method === 'POST') {
@@ -524,6 +536,7 @@ describe('Practitioner and reviewer workflow UI', () => {
     await screen.findByRole('heading', { name: 'Availability & slot management' });
     await user.click(screen.getByRole('button', { name: 'Save weekly availability' }));
     await screen.findByText(/Scheduling configuration saved/i);
+    await screen.findByText(/Active config: Ariya Chen @ HQ-01/i);
 
     await user.clear(screen.getByLabelText('Generate slots days ahead'));
     await user.type(screen.getByLabelText('Generate slots days ahead'), '7');

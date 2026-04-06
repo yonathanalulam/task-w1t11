@@ -57,6 +57,15 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
   async function loadSchedulingWorkbench() {
     setSchedulingError('');
 
+    await Promise.all([
+      loadSchedulingOperationalData(),
+      canAdminScheduling ? loadSchedulingConfiguration() : Promise.resolve(),
+    ]);
+  }
+
+  async function loadSchedulingOperationalData() {
+    setSchedulingError('');
+
     try {
       const [slotPayload, bookingPayload] = await Promise.all([
         apiGet<SchedulingSlotsEnvelope>('/api/scheduling/slots'),
@@ -64,21 +73,34 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
       ]);
       setSchedulingSlots(slotPayload.slots);
       setMyBookings(bookingPayload.bookings);
-
-      if (canAdminScheduling) {
-        const configPayload = await apiGet<SchedulingConfigurationEnvelope>('/api/scheduling/configuration');
-        setSchedulingConfig(configPayload.configuration);
-        if (configPayload.configuration) {
-          setConfigPractitionerName(configPayload.configuration.practitionerName);
-          setConfigLocationName(configPayload.configuration.locationName);
-          setConfigSlotDurationMinutes(configPayload.configuration.slotDurationMinutes);
-          setConfigSlotCapacity(configPayload.configuration.slotCapacity);
-        }
-      }
     } catch (error) {
       const apiError = error as ApiError;
       setSchedulingError(apiError?.error?.message ?? 'Unable to load scheduling workbench.');
     }
+  }
+
+  async function loadSchedulingConfiguration() {
+    setSchedulingError('');
+
+    try {
+      const configPayload = await apiGet<SchedulingConfigurationEnvelope>('/api/scheduling/configuration');
+      applySchedulingConfiguration(configPayload.configuration);
+    } catch (error) {
+      const apiError = error as ApiError;
+      setSchedulingError(apiError?.error?.message ?? 'Unable to load scheduling workbench.');
+    }
+  }
+
+  function applySchedulingConfiguration(configuration: SchedulingConfiguration | null) {
+    setSchedulingConfig(configuration);
+    if (!configuration) {
+      return;
+    }
+
+    setConfigPractitionerName(configuration.practitionerName);
+    setConfigLocationName(configuration.locationName);
+    setConfigSlotDurationMinutes(configuration.slotDurationMinutes);
+    setConfigSlotCapacity(configuration.slotCapacity);
   }
 
   async function handleSaveSchedulingConfig(event: FormEvent<HTMLFormElement>) {
@@ -87,7 +109,7 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
     setSchedulingStatus('');
 
     try {
-      await apiPut(
+      const response = await apiPut<SchedulingConfigurationEnvelope>(
         '/api/scheduling/configuration',
         {
           practitionerName: configPractitionerName.trim(),
@@ -99,8 +121,9 @@ export function useSchedulingWorkflow({ csrfToken, sessionActive, canUseScheduli
         csrfToken,
       );
 
+      applySchedulingConfiguration(response.configuration);
       setSchedulingStatus('Scheduling configuration saved.');
-      await loadSchedulingWorkbench();
+      void loadSchedulingOperationalData();
     } catch (error) {
       const apiError = error as ApiError;
       setSchedulingError(apiError?.error?.message ?? 'Unable to save scheduling configuration.');

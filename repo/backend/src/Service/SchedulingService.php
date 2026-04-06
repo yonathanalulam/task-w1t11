@@ -13,6 +13,7 @@ use App\Repository\AppointmentBookingRepository;
 use App\Repository\AppointmentHoldRepository;
 use App\Repository\AppointmentSlotRepository;
 use App\Repository\SchedulingConfigurationRepository;
+use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -239,9 +240,17 @@ final class SchedulingService
                 );
             }
 
+            if (!$slot->canBook()) {
+                throw new SchedulingFlowException('SLOT_UNAVAILABLE', Response::HTTP_CONFLICT, 'Slot no longer has remaining capacity.');
+            }
+
             $booking = new AppointmentBooking($slot, $username);
-            $slot->reserveOne();
-            $hold->markConverted();
+            try {
+                $slot->reserveOne();
+                $hold->markConverted();
+            } catch (\LogicException) {
+                throw new SchedulingFlowException('SLOT_UNAVAILABLE', Response::HTTP_CONFLICT, 'Slot became unavailable during booking confirmation.');
+            }
 
             $this->entityManager->persist($booking);
             $this->entityManager->flush();
@@ -476,6 +485,12 @@ final class SchedulingService
             $connection->commit();
 
             return $result;
+        } catch (RetryableException) {
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+
+            throw new SchedulingFlowException('SLOT_UNAVAILABLE', Response::HTTP_CONFLICT, 'Scheduling operation conflicted with another in-flight booking attempt.');
         } catch (\Throwable $e) {
             if ($connection->isTransactionActive()) {
                 $connection->rollBack();
