@@ -6,7 +6,7 @@ TARGET_VENDOR_DIR="/workspace/backend/vendor"
 REQUIRED_AUTOLOAD="${TARGET_VENDOR_DIR}/autoload.php"
 REQUIRED_COMPOSER_AUTOLOAD_REAL="${TARGET_VENDOR_DIR}/composer/autoload_real.php"
 REQUIRED_PACKAGE_FILE="${TARGET_VENDOR_DIR}/myclabs/deep-copy/src/DeepCopy/deep_copy.php"
-LOCK_DIR="/tmp/backend_vendor_bootstrap.lock"
+LOCK_DIR="/workspace/runtime/dev/backend_vendor_bootstrap.lock"
 
 if [[ ! -d "${SEED_VENDOR_DIR}" ]]; then
   echo "Seed vendor directory is missing at ${SEED_VENDOR_DIR}" >&2
@@ -30,8 +30,12 @@ acquire_lock() {
 }
 
 seed_vendor_from_image() {
-  rm -rf "${TARGET_VENDOR_DIR}"
   mkdir -p "${TARGET_VENDOR_DIR}"
+
+  shopt -s dotglob nullglob
+  rm -rf "${TARGET_VENDOR_DIR}"/*
+  shopt -u dotglob nullglob
+
   cp -R "${SEED_VENDOR_DIR}/." "${TARGET_VENDOR_DIR}/"
 }
 

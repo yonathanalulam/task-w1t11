@@ -35,9 +35,13 @@ services:
         condition: service_healthy
     working_dir: /workspace/backend
     volumes:
+      - ./backend:/workspace/backend
+      - backend_vendor:/workspace/backend/vendor
+      - ./scripts:/workspace/scripts:ro
+      - ./init_db.sh:/workspace/init_db.sh:ro
       - runtime_state:/workspace/runtime
       - runtime_secrets:/run/secrets/field-encryption
-    command: ["bash", "-lc", "/workspace/scripts/dev/api_start.sh"]
+    command: ["bash", "-lc", "bash /workspace/scripts/dev/api_start.sh"]
     expose:
       - "8000"
     healthcheck:
@@ -60,9 +64,13 @@ services:
         condition: service_healthy
     working_dir: /workspace/backend
     volumes:
+      - ./backend:/workspace/backend
+      - backend_vendor:/workspace/backend/vendor
+      - ./scripts:/workspace/scripts:ro
+      - ./init_db.sh:/workspace/init_db.sh:ro
       - runtime_state:/workspace/runtime
       - runtime_secrets:/run/secrets/field-encryption
-    command: ["bash", "-lc", "/workspace/scripts/dev/worker_start.sh"]
+    command: ["bash", "-lc", "bash /workspace/scripts/dev/worker_start.sh"]
 
   web:
     build:
@@ -111,4 +119,5 @@ volumes:
   db_data:
   runtime_state:
   runtime_secrets:
+  backend_vendor:
   frontend_node_modules:

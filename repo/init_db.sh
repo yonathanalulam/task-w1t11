@@ -4,6 +4,7 @@ set -euo pipefail
 run_container_init() {
   local include_test="${1:-0}"
   local redact_password_output="${2:-0}"
+  local db_init_lock_dir="/workspace/runtime/dev/db_init.lock"
 
   /workspace/scripts/dev/bootstrap_runtime.sh
 
@@ -18,12 +19,22 @@ run_container_init() {
   export MESSENGER_TRANSPORT_DSN="doctrine://default?queue_name=async"
   export FIELD_ENCRYPTION_KEYRING_PATH="${FIELD_ENCRYPTION_KEYRING_PATH}"
 
-  if [[ ! -f /workspace/backend/vendor/autoload.php ]]; then
-    mkdir -p /workspace/backend/vendor
-    cp -R /opt/backend-seed/vendor/. /workspace/backend/vendor/
-  fi
+  bash /workspace/scripts/dev/ensure_backend_vendor.sh
 
   cd /workspace/backend
+
+  for _ in $(seq 1 300); do
+    if mkdir "${db_init_lock_dir}" 2>/dev/null; then
+      trap 'rmdir "${db_init_lock_dir}" 2>/dev/null || true' RETURN
+      break
+    fi
+    sleep 0.2
+  done
+
+  if [[ ! -d "${db_init_lock_dir}" ]]; then
+    echo "Timed out waiting for DB init lock." >&2
+    exit 1
+  fi
 
   local seed_command=(php bin/console app:seed-dev-users --no-interaction)
   if [[ "${redact_password_output}" == "1" ]]; then
@@ -39,6 +50,8 @@ run_container_init() {
     DATABASE_URL="${test_database_url}" APP_ENV=test APP_DEBUG=1 php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
     DATABASE_URL="${test_database_url}" APP_ENV=test APP_DEBUG=1 "${seed_command[@]}"
   fi
+
+  rmdir "${db_init_lock_dir}" 2>/dev/null || true
 }
 
 if [[ "${1:-}" == "--container" ]]; then
