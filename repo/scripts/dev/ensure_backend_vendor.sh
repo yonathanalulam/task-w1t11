@@ -4,6 +4,7 @@ set -euo pipefail
 SEED_VENDOR_DIR="/opt/backend-seed/vendor"
 TARGET_VENDOR_DIR="/workspace/backend/vendor"
 REQUIRED_AUTOLOAD="${TARGET_VENDOR_DIR}/autoload.php"
+REQUIRED_COMPOSER_AUTOLOAD_REAL="${TARGET_VENDOR_DIR}/composer/autoload_real.php"
 REQUIRED_PACKAGE_FILE="${TARGET_VENDOR_DIR}/myclabs/deep-copy/src/DeepCopy/deep_copy.php"
 LOCK_DIR="/tmp/backend_vendor_bootstrap.lock"
 
@@ -34,19 +35,27 @@ seed_vendor_from_image() {
   cp -R "${SEED_VENDOR_DIR}/." "${TARGET_VENDOR_DIR}/"
 }
 
+vendor_is_healthy() {
+  if [[ ! -f "${REQUIRED_AUTOLOAD}" || ! -f "${REQUIRED_COMPOSER_AUTOLOAD_REAL}" || ! -f "${REQUIRED_PACKAGE_FILE}" ]]; then
+    return 1
+  fi
+
+  php -r "require '${REQUIRED_AUTOLOAD}';" >/dev/null 2>&1
+}
+
 acquire_lock
 
-if [[ ! -f "${REQUIRED_AUTOLOAD}" || ! -f "${REQUIRED_PACKAGE_FILE}" ]]; then
+if ! vendor_is_healthy; then
   seed_vendor_from_image
 fi
 
-if [[ ! -f "${REQUIRED_AUTOLOAD}" || ! -f "${REQUIRED_PACKAGE_FILE}" ]]; then
+if ! vendor_is_healthy; then
   if command -v composer >/dev/null 2>&1; then
     composer install --working-dir=/workspace/backend --no-interaction --prefer-dist --no-scripts
   fi
 fi
 
-if [[ ! -f "${REQUIRED_AUTOLOAD}" || ! -f "${REQUIRED_PACKAGE_FILE}" ]]; then
+if ! vendor_is_healthy; then
   echo "Backend dependencies are incomplete under /workspace/backend/vendor" >&2
   exit 1
 fi
