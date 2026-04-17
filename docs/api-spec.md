@@ -495,5 +495,3 @@ Project-level runtime/test/init contracts this API plan assumes:
 - DB init/migration path: `./init_db.sh`
 
 ## 12) Out-of-scope for v1 API spec
-
-None of the prompt-critical behavior is deferred. Any additional optional enhancements (e.g., advanced anomaly rule builder UI) can be layered later without changing core contracts above.

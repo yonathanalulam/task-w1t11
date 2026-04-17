@@ -505,3 +505,26 @@ test('exercises system-admin governance console actions with evidence', async ({
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByText(`Signed in as ${resetUsername}`)).toBeVisible({ timeout: 15_000 });
 });
+
+test('session restores across reload via real /api/auth/me cookie', async ({ page }) => {
+  const password = devBootstrapPassword();
+
+  await page.goto('/');
+  await page.getByLabel('Username').fill('analyst_user');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByText('Signed in as analyst_user')).toBeVisible({ timeout: 15_000 });
+
+  const meResponse = page.waitForResponse(
+    (response) => response.url().includes('/api/auth/me') && response.request().method() === 'GET',
+  );
+
+  await page.reload();
+
+  const meResult = await meResponse;
+  expect(meResult.status()).toBe(200);
+  const mePayload = await meResult.json();
+  expect(mePayload?.data?.username).toBe('analyst_user');
+
+  await expect(page.getByText('Signed in as analyst_user')).toBeVisible({ timeout: 15_000 });
+});

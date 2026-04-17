@@ -66,6 +66,10 @@ if [[ "${1:-}" == "--container" ]]; then
   exit 0
 fi
 
+if [[ -x "$(dirname "$0")/scripts/dev/docker_preflight.sh" ]]; then
+  "$(dirname "$0")/scripts/dev/docker_preflight.sh"
+fi
+
 docker compose run --rm --no-deps bootstrap
 docker compose up -d db
 

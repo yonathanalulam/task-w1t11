@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -x "$(dirname "$0")/scripts/dev/docker_preflight.sh" ]]; then
+  "$(dirname "$0")/scripts/dev/docker_preflight.sh"
+fi
+
 ./init_db.sh
 
 wait_for_db() {
@@ -51,6 +55,28 @@ docker compose run --rm --no-deps web bash -lc '/workspace/scripts/dev/web_test.
 
 echo "Starting runtime stack for e2e..."
 docker compose up -d db api worker web
+
+echo "Running real-HTTP backend smoke layer..."
+docker compose run --rm --no-deps api bash -lc '
+  set -a
+  source /workspace/runtime/dev/runtime.env
+  set +a
+  TEST_DB_NAME="${DB_NAME}_test"
+  export APP_ENV=test APP_DEBUG=1
+  export APP_SECRET="${APP_SECRET}"
+  export DATABASE_URL="mysql://${DB_USER}:${DB_PASSWORD}@db:3306/${TEST_DB_NAME}?serverVersion=8.4.0&charset=utf8mb4"
+  export MESSENGER_TRANSPORT_DSN="sync://"
+  export FIELD_ENCRYPTION_KEYRING_PATH="${FIELD_ENCRYPTION_KEYRING_PATH}"
+  export SMOKE_BASE_URL="http://api:8000"
+  cd /workspace/backend
+  php bin/phpunit --testdox tests/Smoke
+'
+
+echo "Enforcing true real-HTTP API coverage gate (>= 90%)..."
+docker compose run --rm --no-deps api bash -lc '
+  cd /workspace
+  php scripts/dev/http_coverage_check.php --threshold=90
+'
 
 echo "Waiting for app readiness..."
 ready=0

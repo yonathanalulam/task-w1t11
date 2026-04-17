@@ -1,3 +1,5 @@
+Project Type: fullstack
+
 # Regulatory Operations & Analytics Portal
 
 This repository is a Docker-first **on-premise, offline-capable** Regulatory Operations & Analytics Portal with implemented practitioner credential-review, scheduling, controlled question-bank, and analyst analytics/compliance workflows.
@@ -11,6 +13,12 @@ This repository is a Docker-first **on-premise, offline-capable** Regulatory Ope
 - **E2E:** Playwright
 
 ## Primary runtime contract
+
+Supported startup commands (both work; use whichever matches your local Docker CLI):
+
+```bash
+docker-compose up
+```
 
 ```bash
 docker compose up --build
@@ -255,6 +263,118 @@ docker compose run --rm --no-deps api php bin/console app:governance:retention-e
 - Frontend production build output path is `frontend/build/` (Vite `outDir`)
 - Vitest + Testing Library setup
 - Playwright E2E baseline test
+
+## How to verify it works
+
+After `docker-compose up` (or `docker compose up --build`), the stack is ready once `db`, `api`, `worker`, and `web` are all up and the web service reports healthy on port 4280.
+
+### Backend / API verification
+
+```bash
+# 1. API liveness (public route, no auth)
+curl -sS http://127.0.0.1:4280/api/health/live
+# → {"data":{"status":"live"},"meta":{...}}
+
+# 2. API readiness (DB + keyring) (public route, no auth)
+curl -sS http://127.0.0.1:4280/api/health/ready
+# → {"data":{"status":"ready","database":"ok","keyring":{"activeKeyId":"..."}},"meta":{...}}
+
+# 3. Authenticated round-trip using the demo credentials (see below)
+DEV_PASSWORD=$(grep DEV_BOOTSTRAP_PASSWORD runtime/dev/runtime.env | cut -d= -f2)
+curl -sS -c /tmp/regops.jar -H 'Content-Type: application/json' \
+  -d "{\"username\":\"standard_user\",\"password\":\"${DEV_PASSWORD}\"}" \
+  http://127.0.0.1:4280/api/auth/login
+curl -sS -b /tmp/regops.jar http://127.0.0.1:4280/api/auth/me
+# → {"data":{"username":"standard_user","roles":["ROLE_STANDARD_USER"]},"meta":{...}}
+```
+
+Higher-fidelity coverage is available via dedicated scripts:
+
+```bash
+./scripts/dev/docker_preflight.sh      # verifies docker/daemon/public images before tests
+./scripts/dev/real_http_smoke.sh       # boots api, runs real-HTTP PHPUnit smoke suites, enforces coverage gate
+./scripts/dev/http_coverage_check.sh   # standalone real-HTTP coverage gate (>= 90% required)
+./run_tests.sh                         # full backend + frontend + smoke + coverage gate + Playwright
+```
+
+### True real-HTTP coverage gate
+
+A hard gate in CI (and in `./run_tests.sh`) enforces that at least **90 %** of the 57-endpoint API surface is exercised by **real-HTTP** smoke tests — i.e. tests that speak HTTP to `http://api:8000` via `stream_context_create`, not Symfony `WebTestCase::createClient()`.
+
+`scripts/dev/http_coverage_check.php` statically parses `backend/src/Controller/*.php` for the route inventory and `backend/tests/Smoke/*.php` for real-HTTP call sites, then reports:
+
+```
+[http-coverage] True real-HTTP API coverage gate
+  Total endpoints:  57
+  HTTP-covered:     57
+  Coverage:         100.00%
+  Threshold:        90.00%
+```
+
+Run it standalone:
+
+```bash
+./scripts/dev/http_coverage_check.sh                 # default threshold 90%
+./scripts/dev/http_coverage_check.sh --threshold=95  # custom threshold
+./scripts/dev/http_coverage_check.sh --json          # JSON for CI parsing
+```
+
+### Frontend verification (UI)
+
+1. Open <http://127.0.0.1:4280/> — expect the portal shell with heading "Regulatory Operations & Analytics Portal".
+2. In the **Session & Authentication** panel, sign in with one of the demo users below (e.g. `standard_user`) and the shared `DEV_BOOTSTRAP_PASSWORD`.
+3. The header should report "Signed in as standard_user" and role-scoped navigation buttons (e.g. "Practitioner Workflow", "Scheduling Workbench") should become visible.
+4. Reload the page — session should persist via real `/api/auth/me` cookie round-trip (no re-login required).
+
+## Demo credentials
+
+All seeded roles share one runtime-bootstrap password for local dev:
+
+| Role                   | Username               | Password                         |
+|------------------------|------------------------|----------------------------------|
+| Standard user          | `standard_user`        | `${DEV_BOOTSTRAP_PASSWORD}`      |
+| Content admin          | `content_admin`        | `${DEV_BOOTSTRAP_PASSWORD}`      |
+| Credential reviewer    | `credential_reviewer`  | `${DEV_BOOTSTRAP_PASSWORD}`      |
+| Analyst                | `analyst_user`         | `${DEV_BOOTSTRAP_PASSWORD}`      |
+| System admin           | `system_admin`         | `${DEV_BOOTSTRAP_PASSWORD}`      |
+
+`${DEV_BOOTSTRAP_PASSWORD}` is a 16-hex-character value generated the first time Docker boots the stack (see `scripts/dev/bootstrap_runtime.sh`).
+
+### Where to read the demo password
+
+After the stack is up, the password is persisted on disk at `runtime/dev/runtime.env`:
+
+```bash
+# explicit path (preferred)
+grep DEV_BOOTSTRAP_PASSWORD runtime/dev/runtime.env
+
+# running ./init_db.sh directly also prints it
+./init_db.sh
+# ...
+# Seeded local users. Shared dev password: <your-value>
+```
+
+### Deterministic testing credential path
+
+If you need a known, reproducible password for automated testing or documentation, pre-seed `runtime/dev/runtime.env` **before the first container boot**:
+
+```bash
+mkdir -p runtime/dev runtime/secrets/field-encryption
+cat > runtime/dev/runtime.env <<'EOF'
+DB_NAME=regops_local
+DB_USER=regops_local_user
+DB_PASSWORD=local-db-password
+DB_ROOT_PASSWORD=local-db-root-password
+APP_SECRET=local-app-secret-value-for-tests-only
+DEV_BOOTSTRAP_PASSWORD=local-dev-password-123
+FIELD_ENCRYPTION_KEYRING_PATH=/run/secrets/field-encryption/keyring.json
+EOF
+chmod 600 runtime/dev/runtime.env
+```
+
+With that file in place, `scripts/dev/bootstrap_runtime.sh` sees an existing `runtime.env` and skips regeneration, so `DEV_BOOTSTRAP_PASSWORD=local-dev-password-123` is used for every seeded demo user. Delete the file to fall back to auto-generated values.
+
+**Security reminder:** these credentials exist only for local, offline development. They are never deployed, and runtime startup paths redact the password from container logs.
 
 ## Seeded development users
 
