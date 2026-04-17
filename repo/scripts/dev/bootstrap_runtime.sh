@@ -51,22 +51,24 @@ EOF
 
   chmod 600 "${ENV_FILE}"
 else
-  tmp_env_file="$(mktemp)"
-  awk -v fixed_password="${DEV_FIXED_PASSWORD}" '
-    /^DEV_BOOTSTRAP_PASSWORD=/ {
-      print "DEV_BOOTSTRAP_PASSWORD=" fixed_password
-      replaced = 1
-      next
-    }
-    { print }
-    END {
-      if (!replaced) {
+  if [[ -w "${ENV_FILE}" && -w "${DEV_DIR}" ]]; then
+    tmp_env_file="$(mktemp)"
+    awk -v fixed_password="${DEV_FIXED_PASSWORD}" '
+      /^DEV_BOOTSTRAP_PASSWORD=/ {
         print "DEV_BOOTSTRAP_PASSWORD=" fixed_password
+        replaced = 1
+        next
       }
-    }
-  ' "${ENV_FILE}" > "${tmp_env_file}"
-  mv "${tmp_env_file}" "${ENV_FILE}"
-  chmod 600 "${ENV_FILE}"
+      { print }
+      END {
+        if (!replaced) {
+          print "DEV_BOOTSTRAP_PASSWORD=" fixed_password
+        }
+      }
+    ' "${ENV_FILE}" > "${tmp_env_file}"
+    mv "${tmp_env_file}" "${ENV_FILE}"
+    chmod 600 "${ENV_FILE}"
+  fi
 fi
 
 if [[ ! -f "${KEYRING_FILE}" ]]; then
