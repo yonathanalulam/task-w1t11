@@ -8,7 +8,7 @@ services:
       - ./:/workspace
       - runtime_state:/workspace/runtime
       - runtime_secrets:/run/secrets/field-encryption
-    command: ["bash", "-lc", "/workspace/scripts/dev/bootstrap_runtime.sh"]
+    command: ["bash", "-lc", "bash /workspace/scripts/dev/bootstrap_runtime.sh"]
     restart: "no"
 
   db:
@@ -84,7 +84,7 @@ services:
       - ./:/workspace
       - frontend_node_modules:/workspace/frontend/node_modules
       - runtime_state:/workspace/runtime:ro
-    command: ["bash", "-lc", "/workspace/scripts/dev/web_start.sh"]
+    command: ["bash", "-lc", "bash /workspace/scripts/dev/web_start.sh"]
     ports:
       - "127.0.0.1:${WEB_HOST_PORT:-4280}:5173"
     healthcheck:
