@@ -18,6 +18,7 @@ DEV_DIR="${RUNTIME_ROOT}/dev"
 SECRETS_DIR="${RUNTIME_ROOT}/secrets/field-encryption"
 ENV_FILE="${DEV_DIR}/runtime.env"
 KEYRING_FILE="${SECRETS_DIR}/keyring.json"
+DEV_FIXED_PASSWORD="local-dev-password-123"
 
 mkdir -p "${DEV_DIR}" "${SECRETS_DIR}"
 
@@ -36,7 +37,7 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   db_password="$(random_hex 20)"
   db_root_password="$(random_hex 24)"
   app_secret="$(random_hex 32)"
-  dev_password="$(random_hex 8)"
+  dev_password="${DEV_FIXED_PASSWORD}"
 
   cat > "${ENV_FILE}" <<EOF
 DB_NAME=regops_${db_suffix}
@@ -48,6 +49,23 @@ DEV_BOOTSTRAP_PASSWORD=${dev_password}
 FIELD_ENCRYPTION_KEYRING_PATH=/run/secrets/field-encryption/keyring.json
 EOF
 
+  chmod 600 "${ENV_FILE}"
+else
+  tmp_env_file="$(mktemp)"
+  awk -v fixed_password="${DEV_FIXED_PASSWORD}" '
+    /^DEV_BOOTSTRAP_PASSWORD=/ {
+      print "DEV_BOOTSTRAP_PASSWORD=" fixed_password
+      replaced = 1
+      next
+    }
+    { print }
+    END {
+      if (!replaced) {
+        print "DEV_BOOTSTRAP_PASSWORD=" fixed_password
+      }
+    }
+  ' "${ENV_FILE}" > "${tmp_env_file}"
+  mv "${tmp_env_file}" "${ENV_FILE}"
   chmod 600 "${ENV_FILE}"
 fi
 
