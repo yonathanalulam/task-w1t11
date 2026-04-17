@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-/workspace/scripts/dev/bootstrap_runtime.sh
+bash /workspace/scripts/dev/bootstrap_runtime.sh
 bash /workspace/scripts/dev/ensure_backend_vendor.sh
 
 set -a
@@ -16,6 +16,6 @@ export FIELD_ENCRYPTION_KEYRING_PATH="${FIELD_ENCRYPTION_KEYRING_PATH}"
 
 cd /workspace/backend
 
-/workspace/init_db.sh --container
+bash /workspace/init_db.sh --container
 
 exec php bin/console messenger:consume async --time-limit=3600 --memory-limit=256M --sleep=1 -vv

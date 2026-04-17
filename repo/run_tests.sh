@@ -5,7 +5,7 @@ if [[ -x "$(dirname "$0")/scripts/dev/docker_preflight.sh" ]]; then
   "$(dirname "$0")/scripts/dev/docker_preflight.sh"
 fi
 
-./init_db.sh
+bash ./init_db.sh
 
 wait_for_db() {
   docker compose up -d db >/dev/null
@@ -51,7 +51,7 @@ docker compose run --rm --no-deps api bash -lc '
 '
 
 echo "Running frontend unit tests..."
-docker compose run --rm --no-deps web bash -lc '/workspace/scripts/dev/web_test.sh'
+docker compose run --rm --no-deps web bash -lc 'bash /workspace/scripts/dev/web_test.sh'
 
 echo "Starting runtime stack for e2e..."
 docker compose up -d db api worker web

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-/workspace/scripts/dev/bootstrap_runtime.sh
+bash /workspace/scripts/dev/bootstrap_runtime.sh
 
 cd /workspace/frontend
 

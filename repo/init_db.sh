@@ -6,7 +6,7 @@ run_container_init() {
   local redact_password_output="${2:-0}"
   local db_init_lock_dir="/workspace/runtime/dev/db_init.lock"
 
-  /workspace/scripts/dev/bootstrap_runtime.sh
+  bash /workspace/scripts/dev/bootstrap_runtime.sh
 
   set -a
   source /workspace/runtime/dev/runtime.env
@@ -87,4 +87,4 @@ if [[ "${db_ready}" -ne 1 ]]; then
   exit 1
 fi
 
-docker compose run --rm --no-deps api bash -lc "/workspace/init_db.sh --container --with-test"
+docker compose run --rm --no-deps api bash -lc "bash /workspace/init_db.sh --container --with-test"

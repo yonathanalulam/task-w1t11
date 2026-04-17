@@ -26,7 +26,7 @@ if [[ -x "${script_dir}/docker_preflight.sh" ]]; then
 fi
 
 echo "[smoke] ensuring database is initialised..."
-./init_db.sh
+bash ./init_db.sh
 
 echo "[smoke] starting api service..."
 docker compose up -d db api

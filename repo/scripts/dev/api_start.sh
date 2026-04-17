@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-/workspace/scripts/dev/bootstrap_runtime.sh
+bash /workspace/scripts/dev/bootstrap_runtime.sh
 bash /workspace/scripts/dev/ensure_backend_vendor.sh
 
 set -a
@@ -37,6 +37,6 @@ fwrite(STDERR, "Database connection timed out.\n");
 exit(1);
 '
 
-/workspace/init_db.sh --container
+bash /workspace/init_db.sh --container
 
 exec php -S 0.0.0.0:8000 -t public
